@@ -186,7 +186,7 @@ async function updateItemWithOs(docClient, suid, zid, osValue) {
     },
     ExpressionAttributeValues: {
       ":name": newName,
-      ":os": osValue,
+      ":os": osValue.toLowerCase(),
     },
   };
 
