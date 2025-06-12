@@ -1,0 +1,13 @@
+{
+  "name": "device-name-reprocessor",
+  "version": "1.0.0",
+  "description": "Script to process device names from CSV and update DynamoDB records",
+  "main": "process_device_names.js",
+  "scripts": {
+    "start": "node process_device_names.js"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1450.0",
+    "csv-parser": "^3.0.0"
+  }
+}
