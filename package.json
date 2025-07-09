@@ -7,6 +7,8 @@
     "start": "node process_device_names.js"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.840.0",
+    "@aws-sdk/client-secrets-manager": "^3.840.0",
     "aws-sdk": "^2.1450.0",
     "csv-parser": "^3.0.0"
   }
