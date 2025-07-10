@@ -5,10 +5,11 @@ import {
 
 import { PutItemCommand } from "@aws-sdk/client-dynamodb";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { marshall } from "@aws-sdk/util-dynamodb";
 
 const env = "dev";
 
-const tableName = "client-credentials-test";
+const tableName = `${env}-client-credential`;
 
 const oauthClients = [];
 
@@ -25,6 +26,8 @@ const scopesMapper = {
   ivr: ["ivr.read", "ivr.write", "ivr.delete"],
   ldap: ["ldap.read", "ldap.write", "ldap.delete"],
 };
+
+let totalSecrets = 0;
 
 const fetchClients = async () => {
   let nextToken;
@@ -43,6 +46,8 @@ const fetchClients = async () => {
         basicAuthClients.push(secret.Name);
       }
     }
+
+    totalSecrets = totalSecrets + secrets.length;
 
     nextToken = response.NextToken;
   } while (nextToken);
@@ -152,8 +157,6 @@ const createClient = async (secretName, authType) => {
       : services.audit;
 
     clientId = `${orgCode}-apiuser-${service}-basic`;
-
-    basicAuthProcessed++;
   } else {
     let splitted = secretName.split("/");
 
@@ -166,8 +169,13 @@ const createClient = async (secretName, authType) => {
     splitted[4].includes("readonly") && (service += "-readonly");
 
     clientId = `${splitted[4]}-oauth`;
+  }
 
-    oauthProcessed++;
+  const scopes = scopesMapper[service];
+
+  if (!Array.isArray(scopes)) {
+    console.error(`Missing or invalid scopes for clientId: ${clientId}`);
+    return;
   }
 
   let client = {
@@ -176,34 +184,43 @@ const createClient = async (secretName, authType) => {
     createDate: new Date().toISOString(),
     name: clientId,
     orgCode,
-    scopes: scopesMapper[service],
+    scopes: scopes,
     status: "ACTIVE",
   };
 
-  // const command = new PutItemCommand({
-  //   TableName: tableName,
-  //   Item: client,
-  // });
+  const command = new PutItemCommand({
+    TableName: tableName,
+    Item: marshall(client),
+  });
 
-  // const response = await dynamoClient.send(command);
+  await dynamoClient.send(command);
 
-  console.log(secretName, client);
+  console.log("client created", clientId);
+
+  if (authType == "basic_auth") basicAuthProcessed++;
+  else oauthProcessed++;
 };
 
 (async () => {
-  await fetchClients();
+  try {
+    await fetchClients();
 
-  for (let name of oauthClients) {
-    await createClient(name, "client_credentials");
+    for (let name of oauthClients) {
+      await createClient(name, "client_credentials");
+    }
+
+    for (let name of basicAuthClients) {
+      await createClient(name, "basic_auth");
+    }
+
+    console.log("totalSecrets", totalSecrets);
+
+    console.log("basicAuthSecrets", basicAuthClients.length);
+    console.log("basicAuthProcessed", basicAuthProcessed);
+
+    console.log("oauthSecrets", oauthClients.length);
+    console.log("oauthProcessed", oauthProcessed);
+  } catch (e) {
+    console.error("Error", { message: e.message, stack: e.stack });
   }
-
-  for (let name of basicAuthClients) {
-    await createClient(name, "basic_auth");
-  }
-
-  console.log("basicAuthClients", basicAuthClients.length);
-  console.log("basicAuthProcessed", basicAuthProcessed);
-
-  console.log("oauthClients", oauthClients.length);
-  console.log("oauthProcessed", oauthProcessed);
 })();
