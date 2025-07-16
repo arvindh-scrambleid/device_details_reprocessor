@@ -3,8 +3,9 @@ const fs = require("fs");
 const csv = require("csv-parser");
 
 // Global variables
-const ENV = process.env.ENV || "dev";
+const ENV = process.env.ENV || "qa";
 const TABLE_NAME = `${ENV}-user`;
+const processedDevices = new Set();
 
 // Configure logging
 const logger = {
@@ -104,14 +105,7 @@ async function processCsvFile(filePath, docClient) {
     logger.info(`Processing suid=${suid}, zid=${zid}, sourceApp=${sourceApp}`);
 
     try {
-      const item = await getDynamoDbItem(docClient, suid, zid);
-
-      if (!item) {
-        logger.info(`No matching item for suid=${suid}, zid=${zid}`);
-        continue;
-      }
-
-      if (shouldUpdateItem(item)) {
+      if (shouldUpdateItem(zid)) {
         const osValue = getOsFromSourceApp(sourceApp);
         if (!osValue) {
           logger.info(`No OS detected for suid=${suid}, zid=${zid}`);
@@ -119,6 +113,7 @@ async function processCsvFile(filePath, docClient) {
         }
 
         await updateItemWithOs(docClient, suid, zid, osValue);
+        processedDevices.add(zid);
         updatedCount++;
       } else {
         logger.info(
@@ -160,12 +155,7 @@ async function getDynamoDbItem(docClient, suid, zid) {
 }
 
 function shouldUpdateItem(item) {
-  return (
-    item.name &&
-    item.name.toLowerCase() === "desktop agent" &&
-    !item.name.includes("Mac") &&
-    !item.name.includes("Windows")
-  );
+  return !processedDevices.has(item);
 }
 
 async function updateItemWithOs(docClient, suid, zid, osValue) {
@@ -210,6 +200,7 @@ function logCompletion(processedCount, updatedCount) {
  */
 async function main() {
   try {
+    const start = Date.now();
     // Initialize DynamoDB client
     const docClient = new AWS.DynamoDB.DocumentClient();
 
@@ -236,6 +227,10 @@ async function main() {
     logger.info("Process summary:");
     logger.info(`  - Total records processed from CSV: ${processedCount}`);
     logger.info(`  - Total records updated: ${updatedCount}`);
+    logger.info(`Processed devices in set :: ${processedDevices.size}}`);
+
+    const end = Date.now() - start;
+    logger.info(`Execution time: ${end} ms`);
 
     return 0;
   } catch (error) {
