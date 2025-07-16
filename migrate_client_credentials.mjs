@@ -7,7 +7,7 @@ import { PutItemCommand } from "@aws-sdk/client-dynamodb";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
 
-const env = "qa";
+const env = "prod";
 
 const tableName = `${env}-client-credential`;
 
