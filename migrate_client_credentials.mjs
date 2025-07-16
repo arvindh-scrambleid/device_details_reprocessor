@@ -7,7 +7,7 @@ import { PutItemCommand } from "@aws-sdk/client-dynamodb";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
 
-const env = "uat";
+const env = "qa";
 
 const tableName = `${env}-client-credential`;
 
@@ -193,7 +193,7 @@ const createClient = async (secretName, authType) => {
     Item: marshall(client),
   });
 
-  await dynamoClient.send(command);
+  // await dynamoClient.send(command);
 
   console.log("client created", clientId);
 
