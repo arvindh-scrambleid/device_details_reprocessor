@@ -193,7 +193,7 @@ const createClient = async (secretName, authType) => {
     Item: marshall(client),
   });
 
-  // await dynamoClient.send(command);
+  await dynamoClient.send(command);
 
   console.log("client created", clientId);
 
